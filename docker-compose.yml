@@ -1,0 +1,62 @@
+services:
+
+  # ─── PostgreSQL — основная БД ────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine          # alpine = лёгкий образ на базе Alpine Linux
+    environment:
+      POSTGRES_USER: notification_admin
+      POSTGRES_PASSWORD: notification_pass
+      POSTGRES_DB: notification_db
+    ports:
+      - "5432:5432"                    # хост:контейнер
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # данные не теряются при рестарте
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_admin -d notification_db"]
+      interval: 5s    # проверять каждые 5 секунд
+      timeout: 5s     # таймаут одной проверки
+      retries: 5      # после 5 неудач — статус unhealthy
+
+  # ─── Redis — кэш + rate limiting + idempotency ───────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]   # отвечает PONG если живой
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── RabbitMQ — очередь сообщений ────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management-alpine   # management = встроенный веб-UI
+    environment:
+      RABBITMQ_DEFAULT_USER: notification_user
+      RABBITMQ_DEFAULT_PASS: notification_pass
+      RABBITMQ_DEFAULT_VHOST: /           # виртуальный хост (изоляция внутри RabbitMQ)
+    ports:
+      - "5672:5672"      # AMQP протокол — для подключения приложения
+      - "15672:15672"    # Management UI — открой в браузере
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # ─── MailHog — фейковый SMTP сервер для разработки ───────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"    # SMTP — на этот порт отправляем письма из кода
+      - "8025:8025"    # Web UI — открой в браузере, увидишь все письма
+
+# Именованные тома — Docker хранит данные между перезапусками контейнеров
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:

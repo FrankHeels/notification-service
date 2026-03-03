@@ -1,0 +1,22 @@
+# Секреты — НИКОГДА не коммитить
+.env
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+*.egg-info/
+
+# Тесты
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Mypy
+.mypy_cache/
+
+# IDE
+.idea/
+.vscode/

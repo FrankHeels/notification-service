@@ -1,0 +1,74 @@
+[project]
+name = "notification-service"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    # Web framework (включает uvicorn, python-multipart и др.)
+    "fastapi[standard]>=0.115",
+    # ORM + async поддержка
+    "sqlalchemy[asyncio]>=2.0",
+    # Миграции БД
+    "alembic>=1.13",
+    # Async драйвер PostgreSQL
+    "asyncpg>=0.29",
+    # Pydantic Settings — читает .env файл
+    "pydantic-settings>=2.0",
+    # RabbitMQ клиент (async)
+    "aio-pika>=9.0",
+    # Redis клиент (asyncio — async режим)
+    "redis[asyncio]>=5.0",
+    # JWT токены
+    "pyjwt>=2.8",
+    # Async HTTP клиент (для Telegram провайдера)
+    "httpx>=0.27",
+    # Async SMTP для отправки email
+    "aiosmtplib>=3.0",
+    # Структурированное логирование
+    "structlog>=24.0",
+]
+
+[dependency-groups]
+dev = [
+    # Тест-фреймворк
+    "pytest>=8.0",
+    # Async поддержка для pytest
+    "pytest-asyncio>=0.24",
+    # Async HTTP клиент для тестов FastAPI
+    "httpx>=0.27",
+    # Фабрики тестовых данных
+    "factory-boy>=3.3",
+    # Реальные БД в тестах через Docker
+    "testcontainers[postgres,redis,rabbitmq]>=4.0",
+    # Линтер
+    "ruff>=0.8",
+    # Статическая типизация
+    "mypy>=1.11",
+    # Типы для SQLAlchemy (нужны mypy)
+    "sqlalchemy[mypy]>=2.0",
+]
+
+# --- Ruff (линтер + форматтер) ---
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle — ошибки стиля (PEP 8)
+    "F",   # pyflakes — неиспользуемые импорты, переменные
+    "I",   # isort — порядок импортов
+    "UP",  # pyupgrade — современный синтаксис Python
+]
+
+# --- Mypy (статическая типизация) ---
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# Игнорировать библиотеки без type stubs
+ignore_missing_imports = true
+
+# --- Pytest ---
+[tool.pytest.ini_options]
+# auto = не нужно писать @pytest.mark.asyncio на каждом async тесте
+asyncio_mode = "auto"
+testpaths = ["tests"]
