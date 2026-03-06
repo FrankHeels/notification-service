@@ -14,7 +14,7 @@ class Priority(str, Enum):
 
 class Status(str, Enum):# pending|processing|completed|failed
     PENDING = "pending"
-    PROCCESSING = "proccessing"
+    PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
 
