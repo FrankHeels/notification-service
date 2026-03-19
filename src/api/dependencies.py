@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
 from src.database import get_db
+from src.redis import get_redis
 from src.models.user import User
 from src.repositories.user_repo import UserRepository
 from src.services.user_service import UserService
