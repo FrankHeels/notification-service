@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.notification import Priority, Status
+from src.schemas.delivery import DeliveryLogResponse 
 
 class NotificationCreate(BaseModel):
     user_id: uuid.UUID
@@ -23,3 +24,4 @@ class NotificationResponse(BaseModel):
     priority: Priority 
     status: Status
     created_at: datetime
+    deliveries: list[DeliveryLogResponse] = []
