@@ -3,16 +3,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.api.router import router
+from src.rabbitmq import init_rabbitmq, close_rabbitmq
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application startup and shutdown events."""
     # --- startup ---
-    # TODO: подключить Redis, RabbitMQ когда реализуем
+    await init_rabbitmq()
     yield
     # --- shutdown ---
-    # TODO: закрыть соединения когда реализуем
-
+    await close_rabbitmq()
 
 app = FastAPI(
     title="Notification Service",
@@ -21,6 +21,4 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-# TODO: подключить роутеры когда реализуем api/
 app.include_router(router)
