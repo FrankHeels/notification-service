@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import settings
 from src.database import get_db
 from src.redis import get_redis
+from src.rabbitmq import get_exchange
 from src.models.user import User
 from src.repositories.user_repo import UserRepository
 from src.services.user_service import UserService
+from src.services.notification_service import NotificationService
 
 security = HTTPBearer()
 
@@ -46,3 +48,11 @@ async def get_user_service(
 ) -> UserService:
     repo = UserRepository(db)
     return UserService(repo)
+
+async def get_notification_service(
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis),
+    exchange = Depends(get_exchange)
+) -> NotificationService:
+    return NotificationService(db, redis_client, exchange)
+    
