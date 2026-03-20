@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.models.user_channel import ChannelType
 from src.repositories.base import BaseRepository
 from src.models.notification import Notification
 from src.models.delivery_log import DeliveryLog
@@ -41,3 +42,13 @@ class NotificationRepository(BaseRepository[Notification]):
         self.session.add(log)
         await self.session.flush()
         return log
+    
+    async def get_delivery_log(self, notification_id: UUID, channel: ChannelType) -> DeliveryLog | None:
+        result = await self.session.execute(
+            select(DeliveryLog)
+            .where(
+                DeliveryLog.notification_id == notification_id, 
+                DeliveryLog.channel == channel
+            )
+        )
+        return result.scalar_one_or_none()
