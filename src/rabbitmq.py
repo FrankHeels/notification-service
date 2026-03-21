@@ -25,6 +25,11 @@ async def init_rabbitmq() -> None:
         queue = await _channel.declare_queue(queue_name, durable=True)
         await queue.bind(_exchange, routing_key=routing_key)
 
+async def get_queue(channel: str) -> str:
+    if channel not in QUEUES:
+        raise ValueError(f"Invalid channel type: {channel}")
+    return QUEUES[channel]
+
 async def get_exchange() -> AbstractExchange:
     if _exchange is None:
         raise RuntimeError("RabbitMQ exchange not initialized")
