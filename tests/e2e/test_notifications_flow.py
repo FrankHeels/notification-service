@@ -7,7 +7,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
-from src.api.dependencies import get_exchange, get_redis
+from src.api.dependencies import get_exchange, get_rate_limiter, get_redis
 from src.config import settings
 from src.database import get_db
 from src.main import app
@@ -73,6 +73,13 @@ class FakeExchange:
         self.messages.append((message.body, routing_key))
 
 
+class FakeRateLimiter:
+    """Минимальный limiter, который пропускает запросы в e2e-тестах."""
+
+    def __init__(self) -> None:
+        self.check_limit = AsyncMock()
+
+
 @pytest.fixture
 async def fake_redis() -> FakeRedis:
     """Даю новый fake Redis на каждый тест."""
@@ -86,7 +93,18 @@ async def fake_exchange() -> FakeExchange:
 
 
 @pytest.fixture
-async def e2e_client(session, fake_redis: FakeRedis, fake_exchange: FakeExchange):
+async def fake_rate_limiter() -> FakeRateLimiter:
+    """В e2e мне не нужно тестировать Redis-алгоритм лимитера повторно."""
+    return FakeRateLimiter()
+
+
+@pytest.fixture
+async def e2e_client(
+    session,
+    fake_redis: FakeRedis,
+    fake_exchange: FakeExchange,
+    fake_rate_limiter: FakeRateLimiter,
+):
     """Собираю HTTP-клиент с реальной БД и подмененными внешними зависимостями."""
 
     async def override_get_db():
@@ -98,9 +116,13 @@ async def e2e_client(session, fake_redis: FakeRedis, fake_exchange: FakeExchange
     async def override_get_exchange():
         return fake_exchange
 
+    async def override_get_rate_limiter():
+        return fake_rate_limiter
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_redis] = override_get_redis
     app.dependency_overrides[get_exchange] = override_get_exchange
+    app.dependency_overrides[get_rate_limiter] = override_get_rate_limiter
 
     # Иду через ASGITransport, чтобы тестировать HTTP-flow без реального сервера.
     transport = ASGITransport(app=app)

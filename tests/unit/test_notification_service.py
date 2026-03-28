@@ -12,7 +12,7 @@ from src.services.notification_service import IDEMPOTENCY_TTL, NotificationServi
 from tests.factories import NotificationFactory, UserChannelFactory, UserFactory
 
 
-def make_service() -> tuple[NotificationService, MagicMock, MagicMock]:
+def make_service() -> tuple[NotificationService, MagicMock, MagicMock, MagicMock]:
     """Собираю сервис с моками, чтобы unit-тесты проверяли только orchestration."""
     redis = MagicMock()
     redis.get = AsyncMock(return_value=None)
@@ -21,7 +21,10 @@ def make_service() -> tuple[NotificationService, MagicMock, MagicMock]:
     exchange = MagicMock()
     exchange.publish = AsyncMock()
 
-    service = NotificationService(MagicMock(), redis, exchange)
+    rate_limiter = MagicMock()
+    rate_limiter.check_limit = AsyncMock()
+
+    service = NotificationService(MagicMock(), redis, exchange, rate_limiter)
 
     # Репозитории тоже подменяю моками:
     # здесь меня интересует сценарий сервиса, а не SQL.
@@ -35,7 +38,7 @@ def make_service() -> tuple[NotificationService, MagicMock, MagicMock]:
     service.user_repo = MagicMock()
     service.user_repo.get_user_channels = AsyncMock()
 
-    return service, redis, exchange
+    return service, redis, exchange, rate_limiter
 
 
 class TestSendNotification:
@@ -52,13 +55,14 @@ class TestSendNotification:
             body="Your notification already exists",
         )
 
-        service, redis, _ = make_service()
+        service, redis, _, rate_limiter = make_service()
         redis.get.return_value = str(notification.id)
         service.notification_repo.get.return_value = notification
 
         result = await service.send_notification(data)
 
         assert result == notification
+        rate_limiter.check_limit.assert_awaited_once_with(user.id)
         service.notification_repo.get.assert_awaited_once_with(notification.id)
         service.notification_repo.create.assert_not_awaited()
         service.notification_repo.create_delivery_log.assert_not_awaited()
@@ -79,7 +83,7 @@ class TestSendNotification:
             body="You have a new message",
         )
 
-        service, redis, _ = make_service()
+        service, redis, _, rate_limiter = make_service()
         created_notification_id = uuid4()
 
         async def create_notification(notification):
@@ -95,6 +99,7 @@ class TestSendNotification:
 
         assert result.id == created_notification_id
         assert result.user_id == user.id
+        rate_limiter.check_limit.assert_awaited_once_with(user.id)
         service.notification_repo.create.assert_awaited_once()
         service.user_repo.get_user_channels.assert_awaited_once_with(user.id)
         assert service.notification_repo.create_delivery_log.await_count == 2
@@ -129,13 +134,39 @@ class TestSendNotification:
             ex=IDEMPOTENCY_TTL,
         )
 
+    async def test_stops_before_idempotency_when_rate_limit_is_exceeded(self):
+        """Если лимит исчерпан, сервис не должен доходить до idempotency и БД."""
+        user = UserFactory(id=uuid4())
+        data = NotificationCreate(
+            user_id=user.id,
+            idempotency_key="blocked-request",
+            title="Too many requests",
+            body="Rate limiter should stop this flow",
+        )
+
+        service, redis, _, rate_limiter = make_service()
+        rate_limiter.check_limit.side_effect = HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded",
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.send_notification(data)
+
+        assert exc_info.value.status_code == 429
+        rate_limiter.check_limit.assert_awaited_once_with(user.id)
+        redis.get.assert_not_awaited()
+        service.notification_repo.create.assert_not_awaited()
+        service.notification_repo.create_delivery_log.assert_not_awaited()
+        service.user_repo.get_user_channels.assert_not_awaited()
+
 
 class TestPublishToChannel:
     """Проверяю упаковку payload перед отправкой в RabbitMQ."""
 
     async def test_serializes_payload_and_uses_persistent_messages(self):
         """Сервис должен сериализовать JSON и выставить persistent delivery mode."""
-        service, _, exchange = make_service()
+        service, _, exchange, _ = make_service()
         payload = {"notification_id": str(uuid4())}
 
         await service._publish_to_channel("email", payload)
@@ -155,7 +186,7 @@ class TestGetNotification:
         """Если repo нашло notification, сервис должен вернуть его как есть."""
         user = UserFactory(id=uuid4())
         notification = NotificationFactory(user_id=user.id, id=uuid4())
-        service, _, _ = make_service()
+        service, _, _, _ = make_service()
         service.notification_repo.get_with_deliveries.return_value = notification
 
         result = await service.get_notification(notification.id)
@@ -167,7 +198,7 @@ class TestGetNotification:
 
     async def test_not_found(self):
         """Если notification нет, сервис должен превратить это в 404."""
-        service, _, _ = make_service()
+        service, _, _, _ = make_service()
         service.notification_repo.get_with_deliveries.return_value = None
 
         with pytest.raises(HTTPException) as exc_info:
@@ -187,7 +218,7 @@ class TestGetUserNotifications:
             NotificationFactory(user_id=user.id, id=uuid4()),
             NotificationFactory(user_id=user.id, id=uuid4()),
         ]
-        service, _, _ = make_service()
+        service, _, _, _ = make_service()
         service.notification_repo.get_list_by_user.return_value = notifications
 
         result = await service.get_user_notifications(user.id, skip=5, limit=10)

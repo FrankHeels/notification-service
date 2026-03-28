@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # --- Telegram ---
     telegram_bot_token: str = ""
 
+    # --- Rate limiting ---
+    rate_limit_requests: int = 10
+    rate_limit_window_seconds: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:
