@@ -1,60 +1,68 @@
+﻿from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 from fastapi import HTTPException
 
-from src.services.user_service import UserService
 from src.schemas.user import UserCreate, UserUpdate
+from src.services.user_service import UserService
 from tests.factories import UserFactory
 
 
 class TestCreateUser:
+    """Проверяю ветки create_user и учусь тестировать orchestration сервиса."""
+
     async def test_success(self):
-        # создаём объект User через фабрику — реалистичные данные без ручного заполнения
+        """Happy path: сервис должен дойти до repo.create()."""
+        # Беру готовый объект из фабрики, чтобы тест читался как сценарий,
+        # а не как конструктор данных.
         user = UserFactory()
 
-        # мокаем репозиторий — не нужна реальная БД
+        # В unit-тесте мне важна логика сервиса,
+        # поэтому репозиторий полностью подменяю моками.
         repo = MagicMock()
-        repo.get_by_email = AsyncMock(return_value=None)     # email свободен
-        repo.get_by_username = AsyncMock(return_value=None)  # username свободен
-        repo.create = AsyncMock(return_value=user)           # создание вернёт объект
+        repo.get_by_email = AsyncMock(return_value=None)
+        repo.get_by_username = AsyncMock(return_value=None)
+        repo.create = AsyncMock(return_value=user)
 
         service = UserService(repo)
         data = UserCreate(username=user.username, email=user.email)
 
         result = await service.create_user(data)
 
-        # проверяем что вернулся правильный объект
         assert result == user
-        # проверяем что create был вызван ровно один раз
-        repo.create.assert_called_once()
+        repo.get_by_email.assert_awaited_once_with(user.email)
+        repo.get_by_username.assert_awaited_once_with(user.username)
+        repo.create.assert_awaited_once()
 
     async def test_email_already_exists(self):
+        """Если email занят, сервис должен вернуть 409 и не идти дальше по сценарию."""
         existing_user = UserFactory()
 
         repo = MagicMock()
-        # имитируем что email уже занят — репозиторий вернул существующего пользователя
         repo.get_by_email = AsyncMock(return_value=existing_user)
+        repo.get_by_username = AsyncMock()
+        repo.create = AsyncMock()
 
         service = UserService(repo)
         data = UserCreate(username="newuser", email=existing_user.email)
 
-        # pytest.raises проверяет что метод БРОСИЛ исключение
         with pytest.raises(HTTPException) as exc_info:
             await service.create_user(data)
 
-        # проверяем что это именно 409, а не 404 или 500
         assert exc_info.value.status_code == 409
-        # create не должен был вызываться — зачем создавать если email занят
-        repo.create.assert_not_called()
+        repo.get_by_email.assert_awaited_once_with(existing_user.email)
+        repo.get_by_username.assert_not_awaited()
+        repo.create.assert_not_awaited()
 
     async def test_username_already_exists(self):
+        """Отдельно страхую конфликт по username как другую ветку валидации."""
         existing_user = UserFactory()
 
         repo = MagicMock()
-        # email свободен, но username занят
         repo.get_by_email = AsyncMock(return_value=None)
         repo.get_by_username = AsyncMock(return_value=existing_user)
+        repo.create = AsyncMock()
 
         service = UserService(repo)
         data = UserCreate(username=existing_user.username, email="new@test.com")
@@ -63,25 +71,29 @@ class TestCreateUser:
             await service.create_user(data)
 
         assert exc_info.value.status_code == 409
-        repo.create.assert_not_called()
+        repo.get_by_email.assert_awaited_once_with("new@test.com")
+        repo.get_by_username.assert_awaited_once_with(existing_user.username)
+        repo.create.assert_not_awaited()
 
 
 class TestGetUser:
+    """Проверяю, как сервис превращает ответ repo в поведение приложения."""
+
     async def test_success(self):
+        """Если repo нашло пользователя, сервис должен просто вернуть его."""
         user = UserFactory()
 
         repo = MagicMock()
-        repo.get = AsyncMock(return_value=user) # пользователя найден
+        repo.get = AsyncMock(return_value=user)
 
         service = UserService(repo)
-        
         result = await service.get_user(user.id)
 
         assert result == user
-
-        repo.get.assert_called_once_with(user.id)
+        repo.get.assert_awaited_once_with(user.id)
 
     async def test_not_found(self):
+        """None из repo сервис обязан превратить в понятный для API 404."""
         repo = MagicMock()
         repo.get = AsyncMock(return_value=None)
 
@@ -92,35 +104,50 @@ class TestGetUser:
 
         assert exc_info.value.status_code == 404
 
+
 class TestUpdateUser:
+    """Проверяю многошаговый сценарий update_user."""
+
     async def test_success(self):
+        """Happy path: пользователь найден, а update доходит до repo."""
         user = UserFactory()
         updated_data = UserUpdate(username="updateduser", email="updated@test.com")
-        
+
         repo = MagicMock()
-        repo.get = AsyncMock(return_value=user)  # пользователь найден
-        repo.get_by_email = AsyncMock(return_value=None)     # email свободен
-        repo.get_by_username = AsyncMock(return_value=None)  # username свободен
-        repo.update = AsyncMock(return_value=user) # обновление вернёт тот же объект для простоты теста
+        repo.get = AsyncMock(return_value=user)
+        repo.get_by_email = AsyncMock(return_value=None)
+        repo.get_by_username = AsyncMock(return_value=None)
+        # Для простоты считаю, что repo.update вернет тот же объект после изменения.
+        repo.update = AsyncMock(return_value=user)
 
         service = UserService(repo)
-        
         result = await service.update_user(user.id, updated_data)
 
         assert result == user
-        repo.update.assert_called_once()
+        repo.get.assert_awaited_once_with(user.id)
+        repo.get_by_username.assert_awaited_once_with("updateduser")
+        repo.get_by_email.assert_awaited_once_with("updated@test.com")
+        repo.update.assert_awaited_once()
 
     async def test_email_already_taken(self):
+        """Если новый email уже занят, сервис должен остановиться до repo.update()."""
         user = UserFactory()
         existing_user = UserFactory()
         updated_data = UserUpdate(email=existing_user.email)
 
         repo = MagicMock()
-        repo.get = AsyncMock(return_value=user)  # пользователь найден
-        repo.get_by_email = AsyncMock(return_value=existing_user)  # email занят
+        repo.get = AsyncMock(return_value=user)
+        repo.get_by_email = AsyncMock(return_value=existing_user)
+        repo.get_by_username = AsyncMock()
+        repo.update = AsyncMock()
 
         service = UserService(repo)
+
         with pytest.raises(HTTPException) as exc_info:
             await service.update_user(user.id, updated_data)
 
         assert exc_info.value.status_code == 409
+        repo.get.assert_awaited_once_with(user.id)
+        repo.get_by_email.assert_awaited_once_with(existing_user.email)
+        repo.get_by_username.assert_not_awaited()
+        repo.update.assert_not_awaited()
