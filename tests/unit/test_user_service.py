@@ -2,8 +2,12 @@
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
 
+from src.exceptions import (
+    EmailAlreadyExistsError,
+    UsernameAlreadyExistsError,
+    UserNotFoundError,
+)
 from src.schemas.user import UserCreate, UserUpdate
 from src.services.user_service import UserService
 from tests.factories import UserFactory
@@ -47,10 +51,10 @@ class TestCreateUser:
         service = UserService(repo)
         data = UserCreate(username="newuser", email=existing_user.email)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(EmailAlreadyExistsError) as exc_info:
             await service.create_user(data)
 
-        assert exc_info.value.status_code == 409
+        assert str(exc_info.value) == "User with this email already exists"
         repo.get_by_email.assert_awaited_once_with(existing_user.email)
         repo.get_by_username.assert_not_awaited()
         repo.create.assert_not_awaited()
@@ -67,10 +71,10 @@ class TestCreateUser:
         service = UserService(repo)
         data = UserCreate(username=existing_user.username, email="new@test.com")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UsernameAlreadyExistsError) as exc_info:
             await service.create_user(data)
 
-        assert exc_info.value.status_code == 409
+        assert str(exc_info.value) == "User with this username already exists"
         repo.get_by_email.assert_awaited_once_with("new@test.com")
         repo.get_by_username.assert_awaited_once_with(existing_user.username)
         repo.create.assert_not_awaited()
@@ -99,10 +103,10 @@ class TestGetUser:
 
         service = UserService(repo)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UserNotFoundError) as exc_info:
             await service.get_user(uuid4())
 
-        assert exc_info.value.status_code == 404
+        assert str(exc_info.value) == "User not found"
 
 
 class TestUpdateUser:
@@ -143,10 +147,10 @@ class TestUpdateUser:
 
         service = UserService(repo)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(EmailAlreadyExistsError) as exc_info:
             await service.update_user(user.id, updated_data)
 
-        assert exc_info.value.status_code == 409
+        assert str(exc_info.value) == "User with this email already exists"
         repo.get.assert_awaited_once_with(user.id)
         repo.get_by_email.assert_awaited_once_with(existing_user.email)
         repo.get_by_username.assert_not_awaited()

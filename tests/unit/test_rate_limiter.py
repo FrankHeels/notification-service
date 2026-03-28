@@ -2,8 +2,8 @@
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
 
+from src.exceptions import RateLimitExceededError
 from src.services.rate_limiter import RateLimiter
 
 
@@ -40,12 +40,12 @@ class TestRateLimiter:
         limiter._now_ms = MagicMock(return_value=1000)
         limiter._build_member = MagicMock(return_value="1000:test")
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(RateLimitExceededError) as exc_info:
             await limiter.check_limit(uuid4())
 
-        assert exc_info.value.status_code == 429
-        assert exc_info.value.headers == {"Retry-After": "2"}
-        assert "Rate limit exceeded" in exc_info.value.detail
+        assert exc_info.value.retry_after == 2
+        assert str(exc_info.value) == "Rate limit exceeded. Try again in 2 seconds."
+
 
     def test_rejects_invalid_configuration(self):
         """Плохую конфигурацию лучше поймать сразу при создании объекта."""

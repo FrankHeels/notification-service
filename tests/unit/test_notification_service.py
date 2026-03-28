@@ -4,8 +4,11 @@ from uuid import uuid4
 
 import pytest
 from aio_pika import DeliveryMode
-from fastapi import HTTPException
 
+from src.exceptions import (
+    NotificationNotFoundError,
+    RateLimitExceededError,
+)
 from src.models.user_channel import ChannelType
 from src.schemas.notification import NotificationCreate
 from src.services.notification_service import IDEMPOTENCY_TTL, NotificationService
@@ -145,15 +148,14 @@ class TestSendNotification:
         )
 
         service, redis, _, rate_limiter = make_service()
-        rate_limiter.check_limit.side_effect = HTTPException(
-            status_code=429,
-            detail="Rate limit exceeded",
-        )
+        rate_limiter.check_limit.side_effect = RateLimitExceededError(retry_after=1)
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(RateLimitExceededError) as exc_info:
             await service.send_notification(data)
 
-        assert exc_info.value.status_code == 429
+        assert exc_info.value.retry_after == 1
+        assert str(exc_info.value) == "Rate limit exceeded. Try again in 1 seconds."
+
         rate_limiter.check_limit.assert_awaited_once_with(user.id)
         redis.get.assert_not_awaited()
         service.notification_repo.create.assert_not_awaited()
@@ -201,11 +203,10 @@ class TestGetNotification:
         service, _, _, _ = make_service()
         service.notification_repo.get_with_deliveries.return_value = None
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(NotificationNotFoundError) as exc_info:
             await service.get_notification(uuid4())
 
-        assert exc_info.value.status_code == 404
-        assert exc_info.value.detail == "Notification not found"
+        assert str(exc_info.value) == "Notification not found"
 
 
 class TestGetUserNotifications:
