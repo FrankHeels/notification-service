@@ -1,10 +1,14 @@
 from uuid import UUID
 
-from fastapi import HTTPException
-
+from src.exceptions import (
+    EmailAlreadyExistsError,
+    UsernameAlreadyExistsError,
+    UserNotFoundError,
+)
 from src.models.user import User
-from src.schemas.user import UserCreate, UserUpdate
 from src.repositories.user_repo import UserRepository
+from src.schemas.user import UserCreate, UserUpdate
+
 
 class UserService:
     def __init__(self, repo: UserRepository) -> None:
@@ -13,10 +17,10 @@ class UserService:
     async def create_user(self, user_create: UserCreate) -> User:
         existing = await self.repo.get_by_email(user_create.email)
         if existing:
-            raise HTTPException(409, "User with this email already exists")
+            raise EmailAlreadyExistsError()
         existing = await self.repo.get_by_username(user_create.username)
         if existing:
-            raise HTTPException(409, "User with this username already exists")
+            raise UsernameAlreadyExistsError()
         
         user = User(**user_create.model_dump())
         return await self.repo.create(user)
@@ -24,7 +28,7 @@ class UserService:
     async def get_user(self, user_id: UUID) -> User:
         user = await self.repo.get(user_id)
         if not user:
-            raise HTTPException(404, "User not found")
+            raise UserNotFoundError()
         return user
 
     async def update_user(self, user_id: UUID, user_update: UserUpdate) -> User:
@@ -33,11 +37,11 @@ class UserService:
         if user_update.username and user_update.username != user.username:
             existing = await self.repo.get_by_username(user_update.username)
             if existing:
-                raise HTTPException(409, "User already exists with this username")
+                raise UsernameAlreadyExistsError()
 
         if user_update.email and user_update.email != user.email: 
             existing = await self.repo.get_by_email(user_update.email)
             if existing:
-                raise HTTPException(409, "User already exists with this email")
+                raise EmailAlreadyExistsError()
         
         return await self.repo.update(user, user_update.model_dump(exclude_unset=True))

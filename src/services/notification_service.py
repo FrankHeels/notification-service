@@ -3,10 +3,10 @@ from uuid import UUID
 
 from aio_pika import DeliveryMode, Message
 from aio_pika.abc import AbstractExchange
-from fastapi import HTTPException
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.exceptions import NotificationNotFoundError
 from src.models.delivery_log import DeliveryLog
 from src.models.notification import Notification
 from src.repositories.notification_repo import NotificationRepository
@@ -80,7 +80,7 @@ class NotificationService:
     async def get_notification(self, notification_id: UUID) -> Notification:
         notification = await self.notification_repo.get_with_deliveries(notification_id)
         if not notification:
-            raise HTTPException(status_code=404, detail="Notification not found")
+            raise NotificationNotFoundError()
         return notification
 
     async def get_user_notifications(

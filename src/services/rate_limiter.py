@@ -2,8 +2,9 @@ import math
 import time
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, status
 from redis.asyncio import Redis
+
+from src.exceptions import RateLimitExceededError
 
 RATE_LIMIT_SCRIPT = """
 local key = KEYS[1]
@@ -72,14 +73,7 @@ class RateLimiter:
         retry_after_ms = int(result[1])
         retry_after_seconds = max(1, math.ceil(retry_after_ms / 1000))
 
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                "Rate limit exceeded. "
-                f"Try again in {retry_after_seconds} seconds."
-            ),
-            headers={"Retry-After": str(retry_after_seconds)},
-        )
+        raise RateLimitExceededError(retry_after=retry_after_seconds)
 
     @staticmethod
     def _build_key(user_id: UUID) -> str:

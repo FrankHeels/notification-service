@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from src.api.exception_handler import register_exception_handlers
 from src.api.router import router
-from src.rabbitmq import init_rabbitmq, close_rabbitmq
+from src.rabbitmq import close_rabbitmq, init_rabbitmq
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,5 +22,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+register_exception_handlers(app)
 
 app.include_router(router)
