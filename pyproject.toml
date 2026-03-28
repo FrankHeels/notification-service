@@ -71,4 +71,6 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 # auto = не нужно писать @pytest.mark.asyncio на каждом async тесте
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
+pythonpath = ["."]
