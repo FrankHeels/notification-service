@@ -14,3 +14,6 @@ class BaseNotificationProvider(ABC):
     @abstractmethod
     async def send(self, payload: NotificationPayload) -> None:
         ...
+
+    async def close(self) -> None:
+        return None

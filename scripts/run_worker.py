@@ -1,5 +1,6 @@
 import asyncio
 import argparse
+from contextlib import suppress
 
 from src.rabbitmq import get_queue, init_rabbitmq, close_rabbitmq
 
@@ -17,10 +18,15 @@ async def main(channel: str) -> None:
     await init_rabbitmq()
     queue = await get_queue(channel)
     worker = WORKERS[channel]()
-    await queue.consume(worker.process)
+    consumer_tag = await queue.consume(worker.process)
     try:
         await asyncio.Future()  # Run forever
+    except asyncio.CancelledError:
+        pass
     finally:
+        with suppress(Exception):
+            await queue.cancel(consumer_tag)
+        await worker.close()
         await close_rabbitmq()
 
 
