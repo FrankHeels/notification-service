@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exceptions import (
     InvalidTokenError,
-    AuthenticatedUserNotFoundError
+    AuthenticatedUserNotFoundError,
+    AuthenticationRequiredError
 )
 from src.config import settings
 from src.database import get_db
