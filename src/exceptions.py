@@ -6,6 +6,22 @@ class AppError(Exception):
         super().__init__(self.message)
 
 
+class UnauthorizedError(AppError):
+    default_message = "Unauthorized"
+
+
+class InvalidTokenError(UnauthorizedError):
+    default_message = "Invalid token"
+
+
+class AuthenticationRequiredError(UnauthorizedError):
+    default_message = "Authentication required"
+
+
+class AuthenticatedUserNotFoundError(UnauthorizedError):
+    default_message = "Authenticated user not found"
+
+
 class NotFoundError(AppError):
     default_message = "Entity not found"
 

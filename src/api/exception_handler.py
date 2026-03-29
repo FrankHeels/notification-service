@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from src.exceptions import (
     AppError,
+    UnauthorizedError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
@@ -15,7 +16,9 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
         status_code = 500
 
-        if isinstance(exc, NotFoundError):
+        if isinstance(exc, UnauthorizedError):
+            status_code = 401
+        elif isinstance(exc, NotFoundError):
             status_code = 404
         elif isinstance(exc, ConflictError):
             status_code = 409
