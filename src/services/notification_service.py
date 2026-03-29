@@ -38,7 +38,13 @@ class NotificationService:
         cached = await self.redis.get(key)
         if cached:
             notification_id = UUID(cached)
-            return await self.notification_repo.get(notification_id)
+            existing_notification = await self.notification_repo.get(notification_id)
+            if existing_notification is not None:
+                return existing_notification
+
+            # Если Redis пережил смену БД/окружения, в нем может остаться
+            # idempotency-key без соответствующей записи в PostgreSQL.
+            await self.redis.delete(key)
 
         notification = Notification(
             user_id=data.user_id,
