@@ -53,6 +53,3 @@ worker-email:
 
 worker-telegram:
 	python -m scripts.run_worker --channel telegram
-
-worker-sms:
-	python -m scripts.run_worker --channel sms

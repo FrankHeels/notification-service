@@ -6,10 +6,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database import Base
 
+
 class ChannelType(str, Enum):
     EMAIL = "email"
     TELEGRAM = "telegram"
-    SMS = "sms"
+
 
 class UserChannel(Base):
     __tablename__ = "user_channels"

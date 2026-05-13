@@ -5,13 +5,11 @@ from contextlib import suppress
 from src.rabbitmq import get_queue, init_rabbitmq, close_rabbitmq
 
 from src.workers.email_worker import EmailWorker
-from src.workers.sms_worker import SmsWorker
 from src.workers.telegram_worker import TelegramWorker
 
 WORKERS = {
     "email": EmailWorker,
     "telegram": TelegramWorker,
-    "sms": SmsWorker,
 }
 
 async def main(channel: str) -> None:

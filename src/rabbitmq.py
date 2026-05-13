@@ -16,7 +16,6 @@ EXCHANGE_NAME = "notifications"
 QUEUES = {
     "email": "notifications.email",
     "telegram": "notifications.telegram",
-    "sms": "notifications.sms"
 }
 
 async def init_rabbitmq() -> None:

@@ -48,9 +48,9 @@ services:
       timeout: 10s
       retries: 5
 
-  # ─── MailHog — фейковый SMTP сервер для разработки ───────────────────────────
+  # ─── Mailpit — фейковый SMTP сервер для разработки ───────────────────────────
   mailhog:
-    image: mailhog/mailhog:latest
+    image: axllent/mailpit
     ports:
       - "1025:1025"    # SMTP — на этот порт отправляем письма из кода
       - "8025:8025"    # Web UI — открой в браузере, увидишь все письма
