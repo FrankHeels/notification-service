@@ -1,6 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from uuid import UUID
+import asyncio
 
 import structlog
 from aio_pika.abc import AbstractIncomingMessage
