@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
 
 from src.api.exception_handler import register_exception_handlers
@@ -26,3 +26,4 @@ app = FastAPI(
 register_exception_handlers(app)
 
 app.include_router(router)
+app.mount("/static", StaticFiles(directory="src/static", html=True), name="static")

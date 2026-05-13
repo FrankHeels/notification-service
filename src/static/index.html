@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Notifications Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: #f4f6f8; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .log { margin-top: 20px; border: 1px solid #ddd; border-radius: 4px; max-height: 400px; overflow-y: auto; background: #fafafa; }
+        .log-entry { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .status-sent { color: #10b981; font-weight: bold; }
+        .status-failed { color: #ef4444; font-weight: bold; }
+        .status-retrying { color: #f59e0b; font-weight: bold; }
+        .error-message { font-size: 0.8em; color: #ef4444; margin-top: 5px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; }
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.9em; font-weight: 500; }
+        .badge-connecting { background: #fef3c7; color: #b45309; }
+        .badge-connected { background: #d1fae5; color: #065f46; }
+        .badge-disconnected { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0;">Live Delivery Dashboard 📡</h1>
+            <span id="ws-status" class="status-badge badge-connecting">Connecting...</span>
+        </div>
+        <p style="color: #6b7280; font-size: 0.9em;">This dashboard shows real-time status updates from the RabbitMQ workers processing your notifications.</p>
+        <div class="log" id="log">
+            <div style="padding: 15px; text-align: center; color: #9ca3af; font-style: italic;" id="empty-state">No notifications yet. Send a request to the API to see magic!</div>
+        </div>
+    </div>
+
+    <script>
+        async function connectWS() {
+            const rawToken = prompt("Please enter your JWT token for WebSocket authentication:\n(You can generate one using the API or local script)");
+            if (!rawToken) {
+                updateStatus('Disconnected (No token)', 'badge-disconnected');
+                return;
+            }
+
+            const token = rawToken.trim().replace(/^Bearer\s+/i, "");
+
+            try {
+                // 1. Получаем одноразовый тикет по HTTP
+                const response = await fetch('/api/v1/ws/ticket', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Auth Failed: ${response.statusText} (${response.status})`);
+                }
+
+                const data = await response.json();
+                const ticket = data.ticket;
+
+                // 2. Открываем WebSocket используя полученный тикет
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/api/v1/ws/dashboard?ticket=${ticket}`;
+                
+                const ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    updateStatus('Connected ✅', 'badge-connected');
+                };
+
+                ws.onclose = (e) => {
+                    updateStatus(`Disconnected ❌ (${e.code})`, 'badge-disconnected');
+                };
+
+                ws.onerror = (e) => {
+                    console.error("WebSocket Error:", e);
+                    updateStatus('Connection Error ⚠️', 'badge-disconnected');
+                };
+
+                ws.onmessage = (event) => {
+                    document.getElementById('empty-state')?.remove(); // Убираем плейсхолдер
+                    
+                    const data = JSON.parse(event.data);
+                    const entry = document.createElement('div');
+                    entry.className = 'log-entry';
+                    
+                    let statusClass = `status-${data.status}`;
+                    let shortId = data.notification_id.split('-')[0];
+                    
+                    let htmlContent = `
+                        <div>
+                            <strong>${data.channel.toUpperCase()}</strong> 
+                            <span style="color: #6b7280; font-size: 0.9em; margin-left: 10px;">ID: ${shortId}...</span>
+                        </div>
+                        <span class="${statusClass}">${data.status.toUpperCase()}</span>
+                    `;
+                    
+                    entry.innerHTML = htmlContent;
+                    
+                    if (data.error) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'error-message';
+                        errorDiv.textContent = `Reason: ${data.error}`;
+                        
+                        const wrapper = document.createElement('div');
+                        wrapper.style.padding = '10px';
+                        wrapper.style.borderBottom = '1px solid #eee';
+                        
+                        // Меняем стили внутреннего entry, так как мы используем wrapper
+                        entry.style.borderBottom = 'none';
+                        entry.style.padding = '0';
+                        
+                        wrapper.appendChild(entry);
+                        wrapper.appendChild(errorDiv);
+                        document.getElementById('log').prepend(wrapper);
+                    } else {
+                        document.getElementById('log').prepend(entry);
+                    }
+                };
+            } catch (e) {
+                alert(e.message);
+                updateStatus('Auth Error ❌', 'badge-disconnected');
+            }
+        }
+
+        function updateStatus(text, className) {
+            const el = document.getElementById('ws-status');
+            el.textContent = text;
+            el.className = `status-badge ${className}`;
+        }
+        
+        // Запускаем подключение при загрузке страницы
+        connectWS();
+    </script>
+</body>
+</html>
