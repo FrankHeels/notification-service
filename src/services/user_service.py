@@ -6,6 +6,7 @@ from src.exceptions import (
     UserNotFoundError,
 )
 from src.models.user import User
+from src.models.user_channel import UserChannel, ChannelType
 from src.repositories.user_repo import UserRepository
 from src.schemas.user import UserCreate, UserUpdate
 
@@ -21,15 +22,41 @@ class UserService:
         existing = await self.repo.get_by_username(user_create.username)
         if existing:
             raise UsernameAlreadyExistsError()
-        
+
         user = User(**user_create.model_dump())
-        return await self.repo.create(user)
+        created_user = await self.repo.create(user)
+
+        if user_create.email:
+            email_channel = UserChannel(
+                user_id=created_user.id, 
+                channel=ChannelType.EMAIL, 
+                is_enabled=True
+            )
+            self.repo.session.add(email_channel)
+
+        if user_create.telegram_id:
+            tg_channel = UserChannel(
+                user_id=created_user.id, 
+                channel=ChannelType.TELEGRAM, 
+                is_enabled=True
+            )
+            self.repo.session.add(tg_channel)
+
+        await self.repo.session.commit()
+        return created_user
+
 
     async def get_user(self, user_id: UUID) -> User:
         user = await self.repo.get(user_id)
         if not user:
             raise UserNotFoundError()
         return user
+
+    
+    async def get_users(self) -> list[User]:
+        result = await self.repo.get_users()
+        return result
+
 
     async def update_user(self, user_id: UUID, user_update: UserUpdate) -> User:
         user = await self.get_user(user_id)
