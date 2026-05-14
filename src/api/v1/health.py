@@ -1,5 +1,7 @@
+from typing import Any
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from redis.asyncio import Redis
 from src.database import get_db
 from src.redis import get_redis
@@ -12,7 +14,7 @@ async def health(
     response: Response,
     db: AsyncSession = Depends(get_db),
     redis_client: Redis = Depends(get_redis)    
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Health check endpoint."""
     services = {
         "postgres": "ok",
@@ -21,7 +23,7 @@ async def health(
     }
     #1. Проверка PostgreSQL
     try:
-        await db.execute("SELECT 1")
+        await db.execute(text("SELECT 1"))
     except Exception as exc:
         services["postgres"] = f"error: {str(exc)}"
     #2. Проверка Redis
