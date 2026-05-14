@@ -33,6 +33,9 @@ async def init_rabbitmq() -> None:
         await queue.bind(_exchange, routing_key=routing_key)
         _queues[routing_key] = queue
 
+async def is_connected() -> bool:
+    return _connection is not None and not _connection.is_closed
+
 async def get_queue(channel: str) -> AbstractQueue:
     if channel not in QUEUES:
         raise ValueError(f"Invalid channel type: {channel}")

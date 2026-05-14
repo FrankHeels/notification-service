@@ -38,7 +38,11 @@ class BaseWorker(ABC):
         ...
 
     async def process(self, message: AbstractIncomingMessage) -> None:
-        logger.info("Worker received message", channel=self.channel_type.value, body=message.body.decode())
+        logger.info(
+            "Worker received message",
+            channel=self.channel_type.value,
+            body=message.body.decode(),
+        )
         async with message.process(ignore_processed=True):
             async with AsyncSessionFactory() as session:
                 await self._handle(message, session)
@@ -59,15 +63,21 @@ class BaseWorker(ABC):
             logger.error("Invalid message format", body=message.body, error=str(exc))
             return
 
-        # --- 1. Решение Race Condition ---
+        # --- Решение Race Condition ---
         notification = await notification_repo.get(notification_id)
         if not notification:
-            logger.warning("Notification not found, retrying search...", notification_id=str(notification_id))
+            logger.warning(
+                "Notification not found, retrying search...",
+                notification_id=str(notification_id),
+            )
             await asyncio.sleep(1.5)  # Ждем, пока база "догонит"
             notification = await notification_repo.get(notification_id)
-            
+
             if not notification:
-                logger.error("Notification still not found after delay. Dropping message.", notification_id=str(notification_id))
+                logger.error(
+                    "Notification still not found after delay. Dropping message.",
+                    notification_id=str(notification_id),
+                )
                 return
 
         user = await user_repo.get(notification.user_id)
@@ -75,7 +85,9 @@ class BaseWorker(ABC):
             logger.error("User not found", user_id=notification.user_id)
             return
 
-        log = await notification_repo.get_delivery_log(notification_id, self.channel_type)
+        log = await notification_repo.get_delivery_log(
+            notification_id, self.channel_type
+        )
         if not log:
             logger.error(
                 "Delivery log not found",
@@ -94,31 +106,61 @@ class BaseWorker(ABC):
         try:
             await self.provider.send(payload)
             log.status = DeliveryStatus.SENT
-            logger.info("Notification sent successfully", notification_id=str(notification_id), channel=self.channel_type.value)
+            logger.info(
+                "Notification sent successfully",
+                notification_id=str(notification_id),
+                channel=self.channel_type.value,
+            )
             await self._notify_ws(notification.user_id, notification_id, log.status)
         except Exception as exc:
             log.last_error = str(exc)
-            logger.error("Notification delivery failed", notification_id=str(notification_id), channel=self.channel_type.value, error=str(exc))
-            
+            logger.error(
+                "Notification delivery failed",
+                notification_id=str(notification_id),
+                channel=self.channel_type.value,
+                error=str(exc),
+            )
+
             if log.attempts >= MAX_ATTEMPTS:
                 log.status = DeliveryStatus.FAILED
-                await self._notify_ws(notification.user_id, notification_id, log.status, error=str(exc))
+                await self._notify_ws(
+                    notification.user_id, notification_id, log.status, error=str(exc)
+                )
                 return
 
             # --- 2. Экспоненциальная задержка перед переповтором ---
             delay = log.attempts * 5
-            logger.info("Requeuing message with delay", notification_id=str(notification_id), delay_seconds=delay)
-            
+            logger.info(
+                "Requeuing message with delay",
+                notification_id=str(notification_id),
+                delay_seconds=delay,
+            )
+
             # Уведомляем дашборд, что мы пробуем еще раз
-            await self._notify_ws(notification.user_id, notification_id, DeliveryStatus.PENDING, error=f"Retrying in {delay}s...")
-            
+            await self._notify_ws(
+                notification.user_id,
+                notification_id,
+                DeliveryStatus.PENDING,
+                error=f"Retrying in {delay}s...",
+            )
+
             await asyncio.sleep(delay)
             await message.nack(requeue=True)
 
-
-    async def _notify_ws(self, user_id: UUID, notification_id: UUID, status: DeliveryStatus, error: str | None = None) -> None:
+    async def _notify_ws(
+        self,
+        user_id: UUID,
+        notification_id: UUID,
+        status: DeliveryStatus,
+        error: str | None = None,
+    ) -> None:
         """Вспомогательный метод для отправки статуса в Redis Pub/Sub, чтобы WS мог обновить статус уведомления в реальном времени."""
-        logger.info("Publishing WS update to Redis", user_id=str(user_id), notification_id=str(notification_id), status=status.value)
+        logger.info(
+            "Publishing WS update to Redis",
+            user_id=str(user_id),
+            notification_id=str(notification_id),
+            status=status.value,
+        )
         event = {
             "notification_id": str(notification_id),
             "channel": self.channel_type.value,
