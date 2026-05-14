@@ -48,8 +48,62 @@ services:
       timeout: 10s
       retries: 5
 
+  migrations:
+    build: .
+    command: uv run alembic upgrade head
+    entrypoint:
+      - DATABASE_URL=postgresql+asyncpg://notification_admin:notification_pass@postgres:5432/notification_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    entrypoint: 
+      - DATABASE_URL=postgresql+asyncpg://notification_admin:notification_pass@postgres:5432/notification_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://notification_user:notification_pass@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+  worker-email:
+    build: .
+    command: uv run python -m scripts.run_worker --channel email
+    entrypoint: 
+      - DATABASE_URL=postgresql+asyncpg://notification_admin:notification_pass@postgres:5432/notification_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://notification_user:notification_pass@rabbitmq:5672/
+    depends_on:
+      api:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+  worker-telegram:
+    build: .
+    command: uv run python -m scripts.run_worker --channel telegram
+    entrypoint: 
+      - DATABASE_URL=postgresql+asyncpg://notification_admin:notification_pass@postgres:5432/notification_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://notification_user:notification_pass@rabbitmq:5672/
+    depends_on:
+      api:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+
   # ─── Mailpit — фейковый SMTP сервер для разработки ───────────────────────────
-  mailhog:
+  mailpit:
     image: axllent/mailpit
     ports:
       - "1025:1025"    # SMTP — на этот порт отправляем письма из кода

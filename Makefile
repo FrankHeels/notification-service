@@ -1,5 +1,5 @@
 .PHONY: up down migrate migration test test-cov lint format typecheck \
-        worker-email worker-telegram worker-sms
+        worker-email worker-telegram run clean
 
 # ──────────────────────────────────────────
 # Docker
@@ -53,3 +53,16 @@ worker-email:
 
 worker-telegram:
 	python -m scripts.run_worker --channel telegram
+
+
+# ──────────────────────────────────────────
+# Запуск всего проекта с нуля
+# ──────────────────────────────────────────
+run:
+	docker compose up -d --build
+	@echo "Application is running at http://localhost:8000"
+	@echo "RabbitMQ UI at http://localhost:15672"
+	@echo "Mailpit UI at http://localhost:8025"
+
+clean:
+	docker compose down -v
