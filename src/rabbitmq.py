@@ -5,6 +5,7 @@ from aio_pika.abc import (
     AbstractExchange,
     AbstractQueue,
 )
+
 from src.config import settings
 
 _connection: AbstractConnection | None = None
@@ -17,6 +18,7 @@ QUEUES = {
     "email": "notifications.email",
     "telegram": "notifications.telegram",
 }
+
 
 async def init_rabbitmq() -> None:
     global _connection, _channel, _exchange, _queues
@@ -33,8 +35,10 @@ async def init_rabbitmq() -> None:
         await queue.bind(_exchange, routing_key=routing_key)
         _queues[routing_key] = queue
 
+
 async def is_connected() -> bool:
     return _connection is not None and not _connection.is_closed
+
 
 async def get_queue(channel: str) -> AbstractQueue:
     if channel not in QUEUES:
@@ -43,10 +47,12 @@ async def get_queue(channel: str) -> AbstractQueue:
         raise RuntimeError("RabbitMQ queues not initialized")
     return _queues[channel]
 
+
 async def get_exchange() -> AbstractExchange:
     if _exchange is None:
         raise RuntimeError("RabbitMQ exchange not initialized")
     return _exchange
+
 
 async def close_rabbitmq() -> None:
     global _connection, _channel, _exchange, _queues
