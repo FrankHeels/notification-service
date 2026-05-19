@@ -24,6 +24,7 @@ import src.models.user
 import src.models.user_channel
 import src.models.notification
 import src.models.delivery_log
+import src.models.outbox_event
 
 target_metadata = Base.metadata
 

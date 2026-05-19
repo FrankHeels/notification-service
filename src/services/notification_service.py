@@ -1,4 +1,4 @@
-﻿import json
+import json
 from uuid import UUID
 
 from aio_pika import DeliveryMode, Message
@@ -10,8 +10,10 @@ from src.exceptions import NotificationNotFoundError
 from src.models.delivery_log import DeliveryLog
 from src.models.notification import Notification
 from src.repositories.notification_repo import NotificationRepository
+from src.repositories.outbox_repo import OutboxRepository
 from src.repositories.user_repo import UserRepository
 from src.schemas.notification import NotificationCreate
+from src.services.public_events import build_notification_created_event
 from src.services.rate_limiter import RateLimiter
 
 IDEMPOTENCY_TTL = 60 * 60 * 24
@@ -26,7 +28,9 @@ class NotificationService:
         rate_limiter: RateLimiter,
     ) -> None:
         self.notification_repo = NotificationRepository(session)
+        self.outbox_repo = OutboxRepository(session)
         self.user_repo = UserRepository(session)
+
         self.redis = redis_client
         self.exchange = exchange
         self.rate_limiter = rate_limiter
@@ -56,6 +60,7 @@ class NotificationService:
         await self.notification_repo.create(notification)
 
         channels = await self.user_repo.get_user_channels(data.user_id)
+        user = await self.user_repo.get(data.user_id)
 
         for channel in channels:
             log = DeliveryLog(
@@ -63,6 +68,17 @@ class NotificationService:
                 channel=channel.channel,
             )
             await self.notification_repo.create_delivery_log(log)
+
+        if user is not None:
+            event = build_notification_created_event(
+                notification_id=notification.id,
+                username=user.username,
+                priority=notification.priority,
+                channels=[channel.channel for channel in channels],
+            )
+            await self.outbox_repo.create("notification.created", payload=event)
+
+        for channel in channels:
             await self._publish_to_channel(
                 routing_key=channel.channel.value,
                 payload={"notification_id": str(notification.id)},
