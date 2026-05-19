@@ -3,9 +3,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.repositories.base import BaseRepository
 from src.models.user import User
 from src.models.user_channel import UserChannel
+from src.repositories.base import BaseRepository
 
 
 class UserRepository(BaseRepository[User]):

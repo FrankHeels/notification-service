@@ -15,10 +15,10 @@ class UserFactory(factory.Factory):
         model = User
 
     # Faker генерирует реалистичные случайные данные
-    username = Faker("user_name")           # "john_doe_42"
-    email = Faker("email")                  # "john@example.com"
+    username = Faker("user_name")  # "john_doe_42"
+    email = Faker("email")  # "john@example.com"
     telegram_id = Faker("random_int", min=100000000, max=999999999)
-    phone = Faker("phone_number")           # "+7 (999) 123-45-67"
+    phone = Faker("phone_number")  # "+7 (999) 123-45-67"
     is_active = True
 
 
@@ -41,8 +41,8 @@ class NotificationFactory(factory.Factory):
     # Sequence гарантирует уникальность — каждый вызов даёт новый ключ
     # "idempotency-key-0", "idempotency-key-1", "idempotency-key-2"...
     idempotency_key = factory.Sequence(lambda n: f"idempotency-key-{n}")
-    title = Faker("sentence", nb_words=4)   # "Your order has been placed"
-    body = Faker("paragraph")               # несколько предложений
+    title = Faker("sentence", nb_words=4)  # "Your order has been placed"
+    body = Faker("paragraph")  # несколько предложений
     priority = Priority.NORMAL
     status = Status.PENDING
 

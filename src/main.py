@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-from fastapi.staticfiles import StaticFiles
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from src.api.exception_handler import register_exception_handlers
 from src.api.router import router
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
     yield
     # --- shutdown ---
     await close_rabbitmq()
+
 
 app = FastAPI(
     title="Notification Service",

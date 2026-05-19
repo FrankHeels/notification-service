@@ -3,11 +3,11 @@ from fastapi.responses import JSONResponse
 
 from src.exceptions import (
     AppError,
-    UnauthorizedError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
     RateLimitExceededError,
+    UnauthorizedError,
 )
 
 

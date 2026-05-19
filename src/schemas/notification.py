@@ -4,7 +4,8 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.notification import Priority, Status
-from src.schemas.delivery import DeliveryLogResponse 
+from src.schemas.delivery import DeliveryLogResponse
+
 
 class NotificationCreate(BaseModel):
     user_id: uuid.UUID
@@ -12,6 +13,7 @@ class NotificationCreate(BaseModel):
     title: str = Field(..., examples=["New Message"])
     body: str = Field(..., examples=["You have a new message from John."])
     priority: Priority = Field(Priority.NORMAL, examples=["low", "normal", "high"])
+
 
 class NotificationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -21,7 +23,7 @@ class NotificationResponse(BaseModel):
     idempotency_key: str
     title: str
     body: str
-    priority: Priority 
+    priority: Priority
     status: Status
     created_at: datetime
     deliveries: list[DeliveryLogResponse] = []

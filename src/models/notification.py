@@ -1,18 +1,20 @@
 import uuid
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 
-from sqlalchemy import ForeignKey, Text, String, DateTime, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database import Base
+
 
 class Priority(str, Enum):
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
 
-class Status(str, Enum):# pending|processing|completed|failed
+
+class Status(str, Enum):  # pending|processing|completed|failed
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -30,9 +32,6 @@ class Notification(Base):
     priority: Mapped[Priority] = mapped_column(default=Priority.NORMAL)
     status: Mapped[Status] = mapped_column(default=Status.PENDING)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now()
+        DateTime(timezone=True), server_default=func.now()
     )
-    deliveries: Mapped[list["DeliveryLog"]] = relationship(
-        "DeliveryLog", lazy="noload"
-    )
+    deliveries: Mapped[list["DeliveryLog"]] = relationship("DeliveryLog", lazy="noload")

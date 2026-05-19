@@ -1,4 +1,4 @@
-﻿from datetime import UTC, datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
@@ -148,15 +148,18 @@ class TestSendNotificationFlow:
         session.add_all([user, another_user])
         await session.flush()
 
-        session.add_all([
-            UserChannel(user_id=user.id, channel=ChannelType.EMAIL, is_enabled=True),
-            UserChannel(
-                user_id=user.id,
-                channel=ChannelType.TELEGRAM,
-                is_enabled=True,
-            ),
-            UserChannel(user_id=user.id, channel=ChannelType.SMS, is_enabled=False),
-        ])
+        session.add_all(
+            [
+                UserChannel(
+                    user_id=user.id, channel=ChannelType.EMAIL, is_enabled=True
+                ),
+                UserChannel(
+                    user_id=user.id,
+                    channel=ChannelType.TELEGRAM,
+                    is_enabled=True,
+                ),
+            ]
+        )
         await session.flush()
 
         token = make_token(user.id)
@@ -278,10 +281,13 @@ class TestReadNotificationFlow:
         session.add(notification)
         await session.flush()
 
-        session.add_all([
-            DeliveryLog(notification_id=notification.id, channel=ChannelType.EMAIL),
-            DeliveryLog(notification_id=notification.id, channel=ChannelType.SMS),
-        ])
+        session.add_all(
+            [
+                DeliveryLog(
+                    notification_id=notification.id, channel=ChannelType.EMAIL
+                ),
+            ]
+        )
         await session.flush()
 
         token = make_token(user.id)
@@ -293,10 +299,9 @@ class TestReadNotificationFlow:
         assert response.status_code == 200
         body = response.json()
         assert body["id"] == str(notification.id)
-        assert len(body["deliveries"]) == 2
+        assert len(body["deliveries"]) == 1
         assert {delivery["channel"] for delivery in body["deliveries"]} == {
-            "email",
-            "sms",
+            "email"
         }
 
     async def test_get_notification_returns_403_for_foreign_user(

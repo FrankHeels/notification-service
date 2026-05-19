@@ -1,9 +1,12 @@
 from httpx import AsyncClient
-from src.providers.base import BaseNotificationProvider, NotificationPayload
+
 from src.config import settings
+from src.providers.base import BaseNotificationProvider, NotificationPayload
+
 
 class TelegramProvider(BaseNotificationProvider):
     """Провайдер для отправки уведомлений через Telegram Bot API."""
+
     def __init__(self) -> None:
         self.httpx_client = AsyncClient()
 
@@ -21,7 +24,6 @@ class TelegramProvider(BaseNotificationProvider):
         data = response.json()
         if not data.get("ok"):
             raise RuntimeError(f"Telegram API error: {data.get('description')}")
-
 
     async def close(self) -> None:
         await self.httpx_client.aclose()

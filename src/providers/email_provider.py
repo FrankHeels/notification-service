@@ -1,10 +1,14 @@
-import aiosmtplib
 from email.message import EmailMessage
-from src.providers.base import BaseNotificationProvider, NotificationPayload
+
+import aiosmtplib
+
 from src.config import settings
+from src.providers.base import BaseNotificationProvider, NotificationPayload
+
 
 class EmailProvider(BaseNotificationProvider):
     """Провайдер для отправки email-уведомлений через SMTP."""
+
     async def send(self, payload: NotificationPayload) -> None:
         """Отправляем письмо через SMTP-сервер."""
         message = EmailMessage()
@@ -13,7 +17,6 @@ class EmailProvider(BaseNotificationProvider):
         message["Subject"] = payload.title
         message.set_content(payload.body)
 
-        
         await aiosmtplib.send(
             message,
             hostname=settings.smtp_host,

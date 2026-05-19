@@ -1,18 +1,19 @@
 import uuid
-
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import ForeignKey, DateTime, func, Integer, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database import Base
 from src.models.user_channel import ChannelType
 
+
 class DeliveryStatus(str, Enum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
+
 
 class DeliveryLog(Base):
     __tablename__ = "delivery_log"
@@ -25,6 +26,5 @@ class DeliveryLog(Base):
     last_error: Mapped[str | None] = mapped_column(Text)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now()
+        DateTime(timezone=True), server_default=func.now()
     )

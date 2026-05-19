@@ -1,4 +1,4 @@
-﻿from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -25,6 +25,7 @@ class TestCreateUser:
         # В unit-тесте мне важна логика сервиса,
         # поэтому репозиторий полностью подменяю моками.
         repo = MagicMock()
+        repo.session.commit = AsyncMock(return_value=None)
         repo.get_by_email = AsyncMock(return_value=None)
         repo.get_by_username = AsyncMock(return_value=None)
         repo.create = AsyncMock(return_value=user)

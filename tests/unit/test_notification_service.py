@@ -1,4 +1,4 @@
-﻿import json
+import json
 from unittest.mock import AsyncMock, MagicMock, call
 from uuid import uuid4
 

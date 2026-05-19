@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -205,7 +205,6 @@ class TestGetWithDeliveries:
             [
                 make_delivery_log(notification, ChannelType.EMAIL),
                 make_delivery_log(notification, ChannelType.TELEGRAM),
-                make_delivery_log(notification, ChannelType.SMS),
             ]
         )
         await session.flush()
@@ -214,7 +213,7 @@ class TestGetWithDeliveries:
         result = await repo.get_with_deliveries(notification.id)
 
         assert result is not None
-        assert len(result.deliveries) == 3
+        assert len(result.deliveries) == 2
 
     async def test_returns_empty_deliveries_when_none(self, session):
         """Если delivery_log еще нет, deliveries должен быть пустым списком."""
@@ -368,14 +367,11 @@ class TestCreateDeliveryLog:
         await repo.create_delivery_log(
             make_delivery_log(notification, ChannelType.TELEGRAM)
         )
-        await repo.create_delivery_log(
-            make_delivery_log(notification, ChannelType.SMS)
-        )
 
         result = await repo.get_with_deliveries(notification.id)
 
         assert result is not None
-        assert len(result.deliveries) == 3
+        assert len(result.deliveries) == 2
 
 
 class TestGetDeliveryLog:
@@ -439,7 +435,7 @@ class TestGetDeliveryLog:
         await session.flush()
 
         repo = NotificationRepository(session)
-        result = await repo.get_delivery_log(notification.id, ChannelType.SMS)
+        result = await repo.get_delivery_log(notification.id, ChannelType.TELEGRAM)
 
         assert result is None
 

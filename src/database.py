@@ -9,11 +9,10 @@ from sqlalchemy.orm import DeclarativeBase
 
 from src.config import settings
 
-
 engine = create_async_engine(
     str(settings.database_url),
-    echo=False,       # True — выводить SQL-запросы в консоль (удобно при отладке)
-    pool_size=10,     # постоянных соединений в пуле
+    echo=False,  # True — выводить SQL-запросы в консоль (удобно при отладке)
+    pool_size=10,  # постоянных соединений в пуле
     max_overflow=20,  # доп. соединений сверх pool_size при пиковой нагрузке
     pool_pre_ping=True,  # проверять соединение перед использованием
 )
@@ -38,9 +37,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     Yields:
         AsyncSession: active SQLAlchemy async session.
     """
-    async with AsyncSessionFactory() as session: # Создает новую сессию (соединеие с БД)
+    async with (
+        AsyncSessionFactory() as session
+    ):  # Создает новую сессию (соединеие с БД)
         try:
-            yield session # Передача сессии в роутер FastAPI
+            yield session  # Передача сессии в роутер FastAPI
             await session.commit()
         except Exception:
             await session.rollback()

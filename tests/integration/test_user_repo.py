@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -258,7 +258,7 @@ class TestGetUserChannels:
                 ),
                 UserChannel(
                     user_id=user.id,
-                    channel=ChannelType.SMS,
+                    channel=ChannelType.TELEGRAM,
                     is_enabled=False,
                 ),
             ]

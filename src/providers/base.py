@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+
 @dataclass
 class NotificationPayload:
     title: str
@@ -9,11 +10,10 @@ class NotificationPayload:
 
 
 class BaseNotificationProvider(ABC):
-    """Базовый интерфейс для провайдеров уведомлений.""" 
+    """Базовый интерфейс для провайдеров уведомлений."""
 
     @abstractmethod
-    async def send(self, payload: NotificationPayload) -> None:
-        ...
+    async def send(self, payload: NotificationPayload) -> None: ...
 
     async def close(self) -> None:
         return None

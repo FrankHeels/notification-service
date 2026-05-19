@@ -1,4 +1,4 @@
-﻿from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -45,7 +45,6 @@ class TestRateLimiter:
 
         assert exc_info.value.retry_after == 2
         assert str(exc_info.value) == "Rate limit exceeded. Try again in 2 seconds."
-
 
     def test_rejects_invalid_configuration(self):
         """Плохую конфигурацию лучше поймать сразу при создании объекта."""
