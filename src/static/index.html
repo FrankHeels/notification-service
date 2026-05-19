@@ -5,130 +5,558 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Notifications Dashboard</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: #f4f6f8; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .log { margin-top: 20px; border: 1px solid #ddd; border-radius: 4px; max-height: 400px; overflow-y: auto; background: #fafafa; }
-        .log-entry { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .status-sent { color: #10b981; font-weight: bold; }
-        .status-failed { color: #ef4444; font-weight: bold; }
-        .status-retrying { color: #f59e0b; font-weight: bold; }
-        .error-message { font-size: 0.8em; color: #ef4444; margin-top: 5px; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; }
-        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.9em; font-weight: 500; }
-        .badge-connecting { background: #fef3c7; color: #b45309; }
-        .badge-connected { background: #d1fae5; color: #065f46; }
-        .badge-disconnected { background: #fee2e2; color: #991b1b; }
+        :root {
+            color-scheme: light;
+            --bg: #f5f7fa;
+            --panel: #ffffff;
+            --line: #d9e0e8;
+            --text: #172033;
+            --muted: #677487;
+            --soft: #eef2f6;
+            --ok: #087f5b;
+            --ok-bg: #d8f5e8;
+            --warn: #996400;
+            --warn-bg: #fff0c2;
+            --bad: #b42318;
+            --bad-bg: #ffe0dc;
+            --idle: #475467;
+            --idle-bg: #e7ebf0;
+            --accent: #1f6feb;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 15px;
+        }
+
+        .shell {
+            width: min(1120px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 28px;
+            line-height: 1.15;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+
+        .stream-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .pill,
+        .status-badge,
+        .channel-status {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 650;
+            white-space: nowrap;
+        }
+
+        .pill {
+            background: var(--soft);
+            color: var(--muted);
+        }
+
+        .status-badge {
+            border: 1px solid transparent;
+        }
+
+        .badge-connecting {
+            background: var(--warn-bg);
+            color: var(--warn);
+            border-color: #f3cf72;
+        }
+
+        .badge-connected {
+            background: var(--ok-bg);
+            color: var(--ok);
+            border-color: #9bdcbd;
+        }
+
+        .badge-disconnected {
+            background: var(--bad-bg);
+            color: var(--bad);
+            border-color: #f6aaa2;
+        }
+
+        .feed {
+            display: grid;
+            gap: 10px;
+        }
+
+        .feed-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px;
+            align-items: center;
+            min-height: 82px;
+            padding: 14px 16px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+        }
+
+        .row-main {
+            min-width: 0;
+        }
+
+        .row-title {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            margin-bottom: 8px;
+        }
+
+        .username {
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .notification-id {
+            color: var(--muted);
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+            font-size: 13px;
+        }
+
+        .priority {
+            color: var(--accent);
+            background: #e8f1ff;
+        }
+
+        .row-detail {
+            color: var(--muted);
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .channels {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px;
+            max-width: 420px;
+        }
+
+        .status-pending {
+            background: var(--idle-bg);
+            color: var(--idle);
+        }
+
+        .status-retrying {
+            background: var(--warn-bg);
+            color: var(--warn);
+        }
+
+        .status-sent {
+            background: var(--ok-bg);
+            color: var(--ok);
+        }
+
+        .status-failed {
+            background: var(--bad-bg);
+            color: var(--bad);
+        }
+
+        .empty-state {
+            min-height: 180px;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+            background: var(--panel);
+            border: 1px dashed var(--line);
+            border-radius: 8px;
+            text-align: center;
+            padding: 24px;
+        }
+
+        @media (max-width: 720px) {
+            .shell {
+                width: min(100% - 20px, 1120px);
+                padding: 18px 0;
+            }
+
+            .topbar,
+            .feed-row {
+                grid-template-columns: 1fr;
+            }
+
+            .topbar {
+                display: grid;
+            }
+
+            .channels {
+                justify-content: flex-start;
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1 style="margin: 0;">Live Delivery Dashboard 📡</h1>
-            <span id="ws-status" class="status-badge badge-connecting">Connecting...</span>
-        </div>
-        <p style="color: #6b7280; font-size: 0.9em;">This dashboard shows real-time status updates from the RabbitMQ workers processing your notifications.</p>
-        <div class="log" id="log">
-            <div style="padding: 15px; text-align: center; color: #9ca3af; font-style: italic;" id="empty-state">No notifications yet. Send a request to the API to see magic!</div>
-        </div>
-    </div>
+    <main class="shell">
+        <header class="topbar">
+            <div>
+                <h1>Live Delivery Dashboard</h1>
+                <div class="stream-meta">
+                    <span class="pill" id="total-count">0 notifications</span>
+                    <span class="pill" id="last-event">No events</span>
+                </div>
+            </div>
+            <span id="ws-status" class="status-badge badge-connecting">Connecting</span>
+        </header>
+
+        <section class="feed" id="feed" aria-live="polite">
+            <div class="empty-state" id="empty-state">Waiting for public events</div>
+        </section>
+    </main>
 
     <script>
-        async function connectWS() {
-            const rawToken = prompt("Please enter your JWT token for WebSocket authentication:\n(You can generate one using the API or local script)");
-            if (!rawToken) {
-                updateStatus('Disconnected (No token)', 'badge-disconnected');
-                return;
-            }
+        const LAST_EVENT_KEY = "notification-dashboard:last-event-id";
+        const STATE_KEY = "notification-dashboard:state";
+        const MAX_ROWS = 100;
+        const notifications = new Map();
 
-            const token = rawToken.trim().replace(/^Bearer\s+/i, "");
+        let socket = null;
+        let reconnectTimer = null;
+        let reconnectDelayMs = 1000;
+
+        restoreState();
+        renderFeed();
+        connectWS();
+
+        async function connectWS() {
+            clearTimeout(reconnectTimer);
+            updateStatus("Connecting", "badge-connecting");
 
             try {
-                // 1. Получаем одноразовый тикет по HTTP
-                const response = await fetch('/api/v1/ws/ticket', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const response = await fetch("/api/v1/ws/guest-ticket", {
+                    method: "POST",
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Auth Failed: ${response.statusText} (${response.status})`);
+                    throw new Error(`Ticket request failed: ${response.status}`);
                 }
 
                 const data = await response.json();
                 const ticket = data.ticket;
+                const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+                const url = new URL(`${protocol}//${window.location.host}/api/v1/ws/dashboard`);
+                url.searchParams.set("ticket", ticket);
 
-                // 2. Открываем WebSocket используя полученный тикет
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/api/v1/ws/dashboard?ticket=${ticket}`;
-                
-                const ws = new WebSocket(wsUrl);
+                const lastEventId = localStorage.getItem(LAST_EVENT_KEY);
+                if (lastEventId) {
+                    url.searchParams.set("last_event_id", lastEventId);
+                }
 
-                ws.onopen = () => {
-                    updateStatus('Connected ✅', 'badge-connected');
-                };
-
-                ws.onclose = (e) => {
-                    updateStatus(`Disconnected ❌ (${e.code})`, 'badge-disconnected');
-                };
-
-                ws.onerror = (e) => {
-                    console.error("WebSocket Error:", e);
-                    updateStatus('Connection Error ⚠️', 'badge-disconnected');
-                };
-
-                ws.onmessage = (event) => {
-                    document.getElementById('empty-state')?.remove(); // Убираем плейсхолдер
-                    
-                    const data = JSON.parse(event.data);
-                    const entry = document.createElement('div');
-                    entry.className = 'log-entry';
-                    
-                    let statusClass = `status-${data.status}`;
-                    let shortId = data.notification_id.split('-')[0];
-                    
-                    let htmlContent = `
-                        <div>
-                            <strong>${data.channel.toUpperCase()}</strong> 
-                            <span style="color: #6b7280; font-size: 0.9em; margin-left: 10px;">ID: ${shortId}...</span>
-                        </div>
-                        <span class="${statusClass}">${data.status.toUpperCase()}</span>
-                    `;
-                    
-                    entry.innerHTML = htmlContent;
-                    
-                    if (data.error) {
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'error-message';
-                        errorDiv.textContent = `Reason: ${data.error}`;
-                        
-                        const wrapper = document.createElement('div');
-                        wrapper.style.padding = '10px';
-                        wrapper.style.borderBottom = '1px solid #eee';
-                        
-                        // Меняем стили внутреннего entry, так как мы используем wrapper
-                        entry.style.borderBottom = 'none';
-                        entry.style.padding = '0';
-                        
-                        wrapper.appendChild(entry);
-                        wrapper.appendChild(errorDiv);
-                        document.getElementById('log').prepend(wrapper);
-                    } else {
-                        document.getElementById('log').prepend(entry);
-                    }
-                };
-            } catch (e) {
-                alert(e.message);
-                updateStatus('Auth Error ❌', 'badge-disconnected');
+                socket = new WebSocket(url);
+                socket.addEventListener("open", handleOpen);
+                socket.addEventListener("message", handleMessage);
+                socket.addEventListener("close", handleClose);
+                socket.addEventListener("error", handleError);
+            } catch (error) {
+                console.error(error);
+                updateStatus("Connection error", "badge-disconnected");
+                scheduleReconnect();
             }
         }
 
-        function updateStatus(text, className) {
-            const el = document.getElementById('ws-status');
-            el.textContent = text;
-            el.className = `status-badge ${className}`;
+        function handleOpen() {
+            reconnectDelayMs = 1000;
+            updateStatus("Connected", "badge-connected");
         }
-        
-        // Запускаем подключение при загрузке страницы
-        connectWS();
+
+        function handleMessage(message) {
+            const event = JSON.parse(message.data);
+
+            if (event.event_id) {
+                localStorage.setItem(LAST_EVENT_KEY, event.event_id);
+                updateLastEvent(event.event_id);
+            }
+
+            applyEvent(event);
+            persistState();
+            renderFeed();
+        }
+
+        function handleClose(closeEvent) {
+            updateStatus(`Disconnected (${closeEvent.code})`, "badge-disconnected");
+            scheduleReconnect();
+        }
+
+        function handleError(error) {
+            console.error(error);
+            updateStatus("Connection error", "badge-disconnected");
+        }
+
+        function scheduleReconnect() {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connectWS, reconnectDelayMs);
+            reconnectDelayMs = Math.min(reconnectDelayMs * 2, 10000);
+        }
+
+        function applyEvent(event) {
+            if (!event.notification_id) {
+                return;
+            }
+
+            const row = getOrCreateNotification(event.notification_id);
+            row.lastEventId = event.event_id || row.lastEventId;
+            row.updatedAt = event.occurred_at || new Date().toISOString();
+
+            if (event.username) {
+                row.username = event.username;
+            }
+
+            if (event.type === "notification.created") {
+                row.priority = event.priority || row.priority;
+                row.createdAt = event.occurred_at || row.createdAt;
+                for (const channel of event.channels || []) {
+                    ensureChannel(row, channel);
+                }
+            }
+
+            if (event.type === "delivery.updated" && event.channel) {
+                ensureChannel(row, event.channel);
+                row.channels.get(event.channel).status = event.status || "pending";
+                row.channels.get(event.channel).attempts = event.attempts ?? null;
+                row.channels.get(event.channel).publicReason = event.public_reason || "";
+            }
+
+            trimNotifications();
+        }
+
+        function getOrCreateNotification(notificationId) {
+            if (!notifications.has(notificationId)) {
+                notifications.set(notificationId, {
+                    notificationId,
+                    username: "unknown",
+                    priority: "normal",
+                    channels: new Map(),
+                    createdAt: "",
+                    updatedAt: "",
+                    lastEventId: "",
+                });
+            }
+            return notifications.get(notificationId);
+        }
+
+        function ensureChannel(row, channel) {
+            if (!row.channels.has(channel)) {
+                row.channels.set(channel, {
+                    status: "pending",
+                    attempts: null,
+                    publicReason: "",
+                });
+            }
+        }
+
+        function trimNotifications() {
+            if (notifications.size <= MAX_ROWS) {
+                return;
+            }
+
+            const rows = sortedRows();
+            for (const row of rows.slice(MAX_ROWS)) {
+                notifications.delete(row.notificationId);
+            }
+        }
+
+        function renderFeed() {
+            const feed = document.getElementById("feed");
+            const rows = sortedRows();
+
+            document.getElementById("total-count").textContent = formatCount(rows.length);
+
+            if (rows.length === 0) {
+                const empty = document.createElement("div");
+                empty.id = "empty-state";
+                empty.className = "empty-state";
+                empty.textContent = "Waiting for public events";
+                feed.replaceChildren(empty);
+                return;
+            }
+
+            feed.replaceChildren(...rows.map(createRowElement));
+        }
+
+        function sortedRows() {
+            return Array.from(notifications.values()).sort((left, right) => {
+                return compareStreamIds(right.lastEventId, left.lastEventId);
+            });
+        }
+
+        function createRowElement(row) {
+            const item = document.createElement("article");
+            item.className = "feed-row";
+
+            const main = document.createElement("div");
+            main.className = "row-main";
+
+            const title = document.createElement("div");
+            title.className = "row-title";
+
+            const username = document.createElement("span");
+            username.className = "username";
+            username.textContent = `@${row.username}`;
+
+            const id = document.createElement("span");
+            id.className = "notification-id";
+            id.textContent = shortId(row.notificationId);
+
+            const priority = document.createElement("span");
+            priority.className = "pill priority";
+            priority.textContent = row.priority;
+
+            title.append(username, id, priority);
+
+            const detail = document.createElement("div");
+            detail.className = "row-detail";
+            detail.textContent = buildDetailText(row);
+
+            main.append(title, detail);
+
+            const channels = document.createElement("div");
+            channels.className = "channels";
+            for (const [channel, state] of row.channels.entries()) {
+                channels.append(createChannelStatus(channel, state));
+            }
+
+            item.append(main, channels);
+            return item;
+        }
+
+        function createChannelStatus(channel, state) {
+            const status = state.status || "pending";
+            const badge = document.createElement("span");
+            badge.className = `channel-status status-${status}`;
+
+            const parts = [channel, status];
+            if (state.attempts !== null && state.attempts !== undefined) {
+                parts.push(`attempt ${state.attempts}`);
+            }
+            if (state.publicReason) {
+                parts.push(state.publicReason);
+            }
+
+            badge.textContent = parts.join(" - ");
+            return badge;
+        }
+
+        function buildDetailText(row) {
+            const timestamp = row.updatedAt || row.createdAt;
+            if (!timestamp) {
+                return "No delivery updates yet";
+            }
+            return `Updated ${formatTimestamp(timestamp)}`;
+        }
+
+        function updateStatus(text, className) {
+            const status = document.getElementById("ws-status");
+            status.textContent = text;
+            status.className = `status-badge ${className}`;
+        }
+
+        function updateLastEvent(eventId) {
+            document.getElementById("last-event").textContent = `Last event ${eventId}`;
+        }
+
+        function formatCount(count) {
+            return count === 1 ? "1 notification" : `${count} notifications`;
+        }
+
+        function formatTimestamp(value) {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return value;
+            }
+            return date.toLocaleString();
+        }
+
+        function shortId(value) {
+            if (!value) {
+                return "unknown";
+            }
+            return value.length > 12 ? `${value.slice(0, 8)}...` : value;
+        }
+
+        function compareStreamIds(left, right) {
+            const leftParts = parseStreamId(left);
+            const rightParts = parseStreamId(right);
+
+            if (leftParts[0] !== rightParts[0]) {
+                return leftParts[0] - rightParts[0];
+            }
+            return leftParts[1] - rightParts[1];
+        }
+
+        function parseStreamId(value) {
+            if (!value || !value.includes("-")) {
+                return [0, 0];
+            }
+
+            const [milliseconds, sequence] = value.split("-");
+            return [
+                Number.parseInt(milliseconds, 10) || 0,
+                Number.parseInt(sequence, 10) || 0,
+            ];
+        }
+
+        function persistState() {
+            const rows = Array.from(notifications.values()).map((row) => {
+                return {
+                    ...row,
+                    channels: Array.from(row.channels.entries()),
+                };
+            });
+            localStorage.setItem(STATE_KEY, JSON.stringify(rows));
+        }
+
+        function restoreState() {
+            const storedState = localStorage.getItem(STATE_KEY);
+            if (!storedState) {
+                return;
+            }
+
+            try {
+                const rows = JSON.parse(storedState);
+                for (const row of rows) {
+                    notifications.set(row.notificationId, {
+                        ...row,
+                        channels: new Map(row.channels || []),
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+                localStorage.removeItem(STATE_KEY);
+            }
+        }
     </script>
 </body>
 </html>
