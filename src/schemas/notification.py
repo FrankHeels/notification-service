@@ -8,7 +8,8 @@ from src.schemas.delivery import DeliveryLogResponse
 
 
 class NotificationCreate(BaseModel):
-    user_id: uuid.UUID
+    model_config = ConfigDict(extra="forbid")
+
     idempotency_key: str
     title: str = Field(..., examples=["New Message"])
     body: str = Field(..., examples=["You have a new message from John."])

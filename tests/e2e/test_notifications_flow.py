@@ -1,14 +1,11 @@
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
-import jwt
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from src.api.dependencies import get_exchange, get_rate_limiter, get_redis
-from src.config import settings
 from src.database import get_db
 from src.main import app
 from src.models.delivery_log import DeliveryLog
@@ -16,6 +13,7 @@ from src.models.notification import Notification, Priority
 from src.models.user import User
 from src.models.user_channel import ChannelType, UserChannel
 from src.repositories.notification_repo import NotificationRepository
+from src.services.security import create_access_token
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -27,6 +25,7 @@ def make_user(**kwargs) -> User:
         "id": uid,
         "username": f"user_{uid.hex[:8]}",
         "email": f"{uid.hex[:8]}@test.com",
+        "password_hash": "test-password-hash",
         "telegram_id": 123456789,
         "phone": "+79991234567",
         "is_active": True,
@@ -36,15 +35,7 @@ def make_user(**kwargs) -> User:
 
 def make_token(user_id: UUID) -> str:
     """Собираю реальный JWT, чтобы e2e проходил через auth-слой по-настоящему."""
-    payload = {
-        "sub": str(user_id),
-        "iat": int(datetime.now(UTC).timestamp()),
-    }
-    return jwt.encode(
-        payload,
-        settings.jwt_secret,
-        algorithm=settings.jwt_algorithm,
-    )
+    return create_access_token(user_id)
 
 
 class FakeRedis:
@@ -144,8 +135,7 @@ class TestSendNotificationFlow:
     ):
         """HTTP POST /send должен пройти весь flow до БД, Redis и exchange."""
         user = make_user()
-        another_user = make_user()
-        session.add_all([user, another_user])
+        session.add(user)
         await session.flush()
 
         session.add_all(
@@ -167,9 +157,6 @@ class TestSendNotificationFlow:
             "/api/v1/notifications/send",
             headers={"Authorization": f"Bearer {token}"},
             json={
-                # Специально передаю чужой user_id:
-                # роут должен переписать его на current_user.id из JWT.
-                "user_id": str(another_user.id),
                 "idempotency_key": "e2e-send-1",
                 "title": "New message",
                 "body": "You have a new message",
@@ -197,12 +184,39 @@ class TestSendNotificationFlow:
             ChannelType.TELEGRAM,
         }
 
-        assert fake_redis.storage["idempotency:e2e-send-1"] == str(notification_id)
+        assert fake_redis.storage[f"idempotency:{user.id}:e2e-send-1"] == str(
+            notification_id
+        )
         assert fake_exchange.publish.await_count == 2
         assert {routing_key for _, routing_key in fake_exchange.messages} == {
             "email",
             "telegram",
         }
+
+    async def test_send_rejects_user_id_from_request_body(
+        self,
+        session,
+        e2e_client: AsyncClient,
+    ):
+        user = make_user()
+        another_user = make_user()
+        session.add_all([user, another_user])
+        await session.flush()
+
+        token = make_token(user.id)
+        response = await e2e_client.post(
+            "/api/v1/notifications/send",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "user_id": str(another_user.id),
+                "idempotency_key": "foreign-user-id",
+                "title": "New message",
+                "body": "You have a new message",
+                "priority": "high",
+            },
+        )
+
+        assert response.status_code == 422
 
     async def test_send_is_idempotent_for_same_request(
         self,
@@ -220,7 +234,6 @@ class TestSendNotificationFlow:
 
         token = make_token(user.id)
         payload = {
-            "user_id": str(user.id),
             "idempotency_key": "same-key",
             "title": "Duplicate request",
             "body": "Should not create duplicates",

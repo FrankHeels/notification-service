@@ -35,10 +35,14 @@ class NotificationService:
         self.exchange = exchange
         self.rate_limiter = rate_limiter
 
-    async def send_notification(self, data: NotificationCreate) -> Notification:
-        await self.rate_limiter.check_limit(data.user_id)
+    async def send_notification(
+        self,
+        data: NotificationCreate,
+        user_id: UUID,
+    ) -> Notification:
+        await self.rate_limiter.check_limit(user_id)
 
-        key = f"idempotency:{data.idempotency_key}"
+        key = f"idempotency:{user_id}:{data.idempotency_key}"
         cached = await self.redis.get(key)
         if cached:
             notification_id = UUID(cached)
@@ -51,7 +55,7 @@ class NotificationService:
             await self.redis.delete(key)
 
         notification = Notification(
-            user_id=data.user_id,
+            user_id=user_id,
             idempotency_key=data.idempotency_key,
             title=data.title,
             body=data.body,
@@ -59,8 +63,8 @@ class NotificationService:
         )
         await self.notification_repo.create(notification)
 
-        channels = await self.user_repo.get_user_channels(data.user_id)
-        user = await self.user_repo.get(data.user_id)
+        channels = await self.user_repo.get_user_channels(user_id)
+        user = await self.user_repo.get(user_id)
 
         for channel in channels:
             log = DeliveryLog(

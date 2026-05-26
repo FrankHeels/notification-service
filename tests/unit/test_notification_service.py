@@ -39,7 +39,11 @@ def make_service() -> tuple[NotificationService, MagicMock, MagicMock, MagicMock
     service.notification_repo.get_list_by_user = AsyncMock()
 
     service.user_repo = MagicMock()
+    service.user_repo.get = AsyncMock(return_value=None)
     service.user_repo.get_user_channels = AsyncMock()
+
+    service.outbox_repo = MagicMock()
+    service.outbox_repo.create = AsyncMock()
 
     return service, redis, exchange, rate_limiter
 
@@ -52,7 +56,6 @@ class TestSendNotification:
         user = UserFactory(id=uuid4())
         notification = NotificationFactory(user_id=user.id, id=uuid4())
         data = NotificationCreate(
-            user_id=user.id,
             idempotency_key="same-request",
             title="Status update",
             body="Your notification already exists",
@@ -62,7 +65,7 @@ class TestSendNotification:
         redis.get.return_value = str(notification.id)
         service.notification_repo.get.return_value = notification
 
-        result = await service.send_notification(data)
+        result = await service.send_notification(data, user.id)
 
         assert result == notification
         rate_limiter.check_limit.assert_awaited_once_with(user.id)
@@ -80,7 +83,6 @@ class TestSendNotification:
             UserChannelFactory(user_id=user.id, channel=ChannelType.TELEGRAM),
         ]
         data = NotificationCreate(
-            user_id=user.id,
             idempotency_key="new-request",
             title="New message",
             body="You have a new message",
@@ -98,7 +100,7 @@ class TestSendNotification:
         service.user_repo.get_user_channels.return_value = channels
         service._publish_to_channel = AsyncMock()
 
-        result = await service.send_notification(data)
+        result = await service.send_notification(data, user.id)
 
         assert result.id == created_notification_id
         assert result.user_id == user.id
@@ -132,7 +134,7 @@ class TestSendNotification:
             ),
         ]
         redis.set.assert_awaited_once_with(
-            "idempotency:new-request",
+            f"idempotency:{user.id}:new-request",
             str(created_notification_id),
             ex=IDEMPOTENCY_TTL,
         )
@@ -141,7 +143,6 @@ class TestSendNotification:
         """Если лимит исчерпан, сервис не должен доходить до idempotency и БД."""
         user = UserFactory(id=uuid4())
         data = NotificationCreate(
-            user_id=user.id,
             idempotency_key="blocked-request",
             title="Too many requests",
             body="Rate limiter should stop this flow",
@@ -151,7 +152,7 @@ class TestSendNotification:
         rate_limiter.check_limit.side_effect = RateLimitExceededError(retry_after=1)
 
         with pytest.raises(RateLimitExceededError) as exc_info:
-            await service.send_notification(data)
+            await service.send_notification(data, user.id)
 
         assert exc_info.value.retry_after == 1
         assert str(exc_info.value) == "Rate limit exceeded. Try again in 1 seconds."

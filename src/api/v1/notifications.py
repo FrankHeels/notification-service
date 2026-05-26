@@ -45,5 +45,4 @@ async def send_notification(
     notification_service: NotificationService = Depends(get_notification_service),
     current_user: User = Depends(get_current_user),
 ) -> NotificationResponse:
-    data.user_id = current_user.id
-    return await notification_service.send_notification(data)
+    return await notification_service.send_notification(data, current_user.id)
