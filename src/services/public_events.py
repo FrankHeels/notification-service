@@ -5,6 +5,7 @@ from src.models.delivery_log import DeliveryStatus
 from src.models.notification import Priority
 from src.models.user_channel import ChannelType
 
+
 def build_notification_created_event(
     *,
     notification_id: UUID,

@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 
 from src.exceptions import RateLimitExceededError
 
+# language=lua
 RATE_LIMIT_SCRIPT = """
 local key = KEYS[1]
 local now_ms = tonumber(ARGV[1])

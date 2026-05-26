@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -9,7 +9,7 @@ from src.database import Base
 from src.models.user_channel import ChannelType
 
 
-class DeliveryStatus(str, Enum):
+class DeliveryStatus(StrEnum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"

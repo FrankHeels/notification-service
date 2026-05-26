@@ -40,23 +40,26 @@ class OutboxDispatcher:
                     stream_id = await self._publish(event)
                 except Exception as e:
                     await repo.mark_failed(event, str(e))
-                    await session.commit()  # Сохраняем статус неудачи для текущего события
+                    # Сохраняем статус неудачи для текущего события
+                    await session.commit() 
                     logger.error(
                         "Failed to publish outbox event",
                         outbox_event_id=event.id,
                         event_type=event.event_type,
                         error=str(e),
                     )
-                    return published_count  # Прерываем цикл при первой же ошибке публикации
+                    # Прерываем цикл при первой же ошибке публикации
+                    return published_count  
 
                 await repo.mark_published(event, stream_id)
                 published_count += 1
-            await session.commit()  # Сохраняем статус опубликованных событий
+            # Сохраняем статус опубликованных событий
+            await session.commit()  
             return published_count
 
     async def _publish(self, event: OutboxEvent) -> str:
         stream_id = await self.redis.xadd(
-            PUBLIC_EVENTS_STREAM,
+            PUBLIC_EVENTS_STREAM, # key
             {
                 "event_type": event.event_type,
                 "payload": json.dumps(

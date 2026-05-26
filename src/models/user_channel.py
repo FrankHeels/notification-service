@@ -1,5 +1,5 @@
 import uuid
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from src.database import Base
 
 
-class ChannelType(str, Enum):
+class ChannelType(StrEnum):
     EMAIL = "email"
     TELEGRAM = "telegram"
 

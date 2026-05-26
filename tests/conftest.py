@@ -9,8 +9,7 @@ from src.main import app
 
 @pytest.fixture(scope="session")
 async def engine():
-    """Поднимаю одну тестовую PostgreSQL на весь прогон.
-
+    """Поднимаем одну тестовую PostgreSQL на весь прогон.
     Это быстрее, чем создавать контейнер заново под каждый тест.
     """
     with PostgresContainer("postgres:16") as pg:
@@ -18,7 +17,7 @@ async def engine():
         url = pg.get_connection_url().replace("psycopg2", "asyncpg")
         engine = create_async_engine(url)
 
-        # Таблицы создаю один раз, чтобы дальше тесты работали с живой схемой.
+        # Таблицы создаются один раз, чтобы дальше тесты работали с живой схемой.
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
@@ -29,7 +28,6 @@ async def engine():
 @pytest.fixture
 async def session(engine):
     """Даю отдельную async session на каждый тест.
-
     После теста откатываю изменения, чтобы следующий стартовал с чистого состояния.
     """
     async with AsyncSession(engine) as session:
@@ -40,7 +38,6 @@ async def session(engine):
 @pytest.fixture
 async def client(session):
     """Подменяю get_db, чтобы FastAPI использовал тестовую сессию.
-
     Так HTTP-тесты ходят в реальную тестовую БД, но при этом остаются изолированными.
     """
 

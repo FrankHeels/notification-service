@@ -173,8 +173,9 @@ class BaseWorker(ABC):
                 attempts=log.attempts,
                 public_reason=f"Retrying in {delay} seconds",
             )
-
-            return delay  # Возвращаем задержку, чтобы RabbitMQ перепоставил сообщение после паузы
+            """Возвращаем задержку, чтобы RabbitMQ
+               перепоставил сообщение после паузы"""
+            return delay
 
     async def _record_delivery_event(
         self,

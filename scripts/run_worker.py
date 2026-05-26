@@ -1,9 +1,8 @@
-import asyncio
 import argparse
+import asyncio
 from contextlib import suppress
 
-from src.rabbitmq import get_queue, init_rabbitmq, close_rabbitmq
-
+from src.rabbitmq import close_rabbitmq, get_queue, init_rabbitmq
 from src.workers.email_worker import EmailWorker
 from src.workers.telegram_worker import TelegramWorker
 

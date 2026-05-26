@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -8,13 +8,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.database import Base
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
 
 
-class Status(str, Enum):  # pending|processing|completed|failed
+class Status(StrEnum):  # pending|processing|completed|failed
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
