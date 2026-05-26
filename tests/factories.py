@@ -17,6 +17,7 @@ class UserFactory(factory.Factory):
     # Faker генерирует реалистичные случайные данные
     username = Faker("user_name")  # "john_doe_42"
     email = Faker("email")  # "john@example.com"
+    password_hash = "test-password-hash"
     telegram_id = Faker("random_int", min=100000000, max=999999999)
     phone = Faker("phone_number")  # "+7 (999) 123-45-67"
     is_active = True

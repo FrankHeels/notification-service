@@ -19,6 +19,7 @@ def make_user(**kwargs) -> User:
         "id": uid,
         "username": f"user_{uid.hex[:8]}",
         "email": f"{uid.hex[:8]}@test.com",
+        "password_hash": "test-password-hash",
         "is_active": True,
     }
     return User(**{**defaults, **kwargs})

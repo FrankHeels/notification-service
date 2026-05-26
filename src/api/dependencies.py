@@ -15,7 +15,9 @@ from src.exceptions import (
 from src.models.user import User
 from src.rabbitmq import get_exchange
 from src.redis import get_redis
+from src.repositories.refresh_token_repo import RefreshTokenRepository
 from src.repositories.user_repo import UserRepository
+from src.services.auth_service import AuthService
 from src.services.notification_service import NotificationService
 from src.services.rate_limiter import RateLimiter
 from src.services.user_service import UserService
@@ -39,6 +41,9 @@ async def get_current_user(
     except jwt.PyJWTError:
         raise InvalidTokenError()
 
+    if payload.get("type") != "access":
+        raise InvalidTokenError()
+
     sub = payload.get("sub")
     if not sub:
         raise InvalidTokenError()
@@ -58,6 +63,13 @@ async def get_current_user(
 async def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
     repo = UserRepository(db)
     return UserService(repo)
+
+
+async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
+    user_repo = UserRepository(db)
+    token_repo = RefreshTokenRepository(db)
+
+    return AuthService(user_repo, token_repo)
 
 
 async def get_rate_limiter(redis_client=Depends(get_redis)) -> RateLimiter:

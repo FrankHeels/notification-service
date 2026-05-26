@@ -5,9 +5,8 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from src.config import settings
-
 from alembic import context
+from src.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,11 +19,6 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from src.database import Base
-import src.models.user
-import src.models.user_channel
-import src.models.notification
-import src.models.delivery_log
-import src.models.outbox_event
 
 target_metadata = Base.metadata
 

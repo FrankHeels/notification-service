@@ -10,6 +10,10 @@ class UnauthorizedError(AppError):
     default_message = "Unauthorized"
 
 
+class InvalidCredentialsError(UnauthorizedError):
+    default_message = "Invalid username or password"
+
+
 class InvalidTokenError(UnauthorizedError):
     default_message = "Invalid token"
 

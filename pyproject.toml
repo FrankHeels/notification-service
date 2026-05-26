@@ -25,6 +25,8 @@ dependencies = [
     "aiosmtplib>=3.0",
     # Структурированное логирование
     "structlog>=24.0",
+    # Хэширование паролей (bcrypt + argon2)
+    "pwdlib[argon2]>=0.2",
 ]
 
 [dependency-groups]
@@ -53,6 +55,7 @@ line-length = 88
 target-version = "py312"
 
 [tool.ruff.lint]
+ignore = ["UP046"]
 select = [
     "E",   # pycodestyle — ошибки стиля (PEP 8)
     "F",   # pyflakes — неиспользуемые импорты, переменные

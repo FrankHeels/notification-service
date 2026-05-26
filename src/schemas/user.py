@@ -4,11 +4,24 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-class UserCreate(BaseModel):
+class UserBase(BaseModel):
     username: str = Field(..., examples=["john_doe"])
     email: EmailStr = Field(..., examples=["john.doe@example.com"])
     telegram_id: int | None = Field(None, examples=[123456789])
     phone: str | None = Field(None, examples=["+1234567890"])
+
+
+class UserCreate(UserBase):
+    pass
+
+
+class UserRegister(UserBase):
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        examples=["strong_password_123"],
+    )
 
 
 class UserUpdate(BaseModel):

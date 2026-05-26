@@ -16,3 +16,5 @@ factory-boy>=3.3
 testcontainers[postgres,redis,rabbitmq]>=4.0
 ruff>=0.8
 mypy>=1.11
+pwdlib[argon2]>=0.2
+pwdlib[bcrypt]>=0.2
